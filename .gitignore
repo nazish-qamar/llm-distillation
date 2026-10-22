@@ -218,3 +218,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+.env
+.databrickscfg
+data/
+outputs/
+*.safetensors
+*.pt
+.databricks
+databricks.yml
+.databricks/
+.vscode
