@@ -1,0 +1,55 @@
+[project]
+name = "kd"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "nazish-qamar", email = "nazishqamar01@gmail.com" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "datasets>=5.1.0",
+    "mlflow>=3.17.2",
+    "pydantic>=2.14.1",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+kd = "kd:main"
+
+[project.optional-dependencies]
+gpu = [
+    "torch>=2.13.0",
+    "transformers>=5.19.0",
+    "trl>=1.16.0",
+    "vllm>=0.32.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[[tool.mypy.overrides]]
+module = ["datasets.*", "transformers.*", "trl.*", "vllm.*", "mlflow.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
