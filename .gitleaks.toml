@@ -1,0 +1,23 @@
+# Secret-scanning rules for llm-distillation, used by the .githooks/pre-commit hook.
+#
+# Starts from gitleaks' built-in rule set and adds only what it misses.
+# Verified against gitleaks 8.30.1:
+#   - databricks-api-token   catches dapi<32 hex>, with or without a -N suffix,
+#                            quoted or bare. No custom rule needed.
+#   - huggingface-access-token  matches hf_[a-zA-Z]{34} only, so it misses any
+#                            real token containing a digit. Hence the rule below.
+
+title = "llm-distillation secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "huggingface-token-alnum"
+description = "Hugging Face access token (alphanumeric; built-in rule is letters-only)"
+regex = '''\b(hf_[a-zA-Z0-9]{34,40})\b'''
+keywords = ["hf_"]
+
+# No entropy threshold on purpose: the hf_ prefix plus a fixed 34-40 character
+# alphanumeric body is specific enough on its own, and an entropy floor would
+# reintroduce the misses this rule exists to close.

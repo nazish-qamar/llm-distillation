@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Block commits that contain secrets (Databricks dapi..., Hugging Face hf_..., etc).
+#
+# Enable in a fresh clone with:
+#   git config core.hooksPath .githooks
+#
+# Install gitleaks: https://github.com/gitleaks/gitleaks/releases
+# Bypass for a single commit (use sparingly): git commit --no-verify
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+# Prefer gitleaks on PATH, fall back to a user-local install.
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks_bin="gitleaks"
+elif [ -x "$HOME/.local/bin/gitleaks" ]; then
+    gitleaks_bin="$HOME/.local/bin/gitleaks"
+else
+    echo "pre-commit: gitleaks not found on PATH or in ~/.local/bin." >&2
+    echo "            Install it from https://github.com/gitleaks/gitleaks/releases" >&2
+    echo "            or skip this check once with: git commit --no-verify" >&2
+    exit 1
+fi
+
+# --staged limits the scan to what is about to be committed; --redact keeps the
+# secret itself out of the terminal and any scrollback.
+if ! "$gitleaks_bin" git "$repo_root" \
+    --pre-commit \
+    --staged \
+    --redact \
+    --no-banner \
+    --config "$repo_root/.gitleaks.toml" \
+    --verbose; then
+    echo >&2
+    echo "pre-commit: BLOCKED - gitleaks found a secret in the staged changes (see above)." >&2
+    echo "            Remove it and restage. Rotate the credential if it was ever pushed." >&2
+    exit 1
+fi
