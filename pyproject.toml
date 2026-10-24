@@ -48,7 +48,7 @@ strict = true
 python_version = "3.12"
 
 [[tool.mypy.overrides]]
-module = ["datasets.*", "transformers.*", "trl.*", "vllm.*", "mlflow.*"]
+module = ["datasets.*", "torch.*", "transformers.*", "trl.*", "vllm.*", "mlflow.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

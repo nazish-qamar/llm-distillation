@@ -89,14 +89,57 @@ it misses any real token containing a digit.
 uv run pytest             # 104 tests
 uv run ruff check .
 uv run ruff format .
-uv run mypy src tests     # strict mode
+uv run mypy src tests scripts   # strict mode
 ```
+
+Any `uv run` that needs the GPU libraries must pass `--extra gpu`, e.g.
+`uv run --extra gpu python scripts/verify_pod.py`. A plain `uv run` syncs the
+environment to the default dependency set and **uninstalls** torch, vllm,
+transformers and trl.
 
 To scan the full history for secrets, not just staged changes:
 
 ```bash
 gitleaks git --redact --verbose
 ```
+
+## Starting a pod
+
+Pods are disposable and have no network volume, so this runs from scratch each
+time. Set these six variables in the RunPod **pod config** — the pod does not
+read `.env`, which is local-only:
+
+| Variable | Value in the pod config |
+| --- | --- |
+| `HF_TOKEN` | `{{ RUNPOD_SECRET_HF_TOKEN }}` |
+| `DATABRICKS_TOKEN` | `{{ RUNPOD_SECRET_DATABRICKS_TOKEN }}` |
+| `DATABRICKS_HOST` | plain value, e.g. `https://dbc-xxxxxxxx-xxxx.cloud.databricks.com` |
+| `MLFLOW_TRACKING_URI` | plain value: `databricks` |
+| `MLFLOW_EXPERIMENT_NAME` | plain value, e.g. `/Users/you@example.com/kd-gsm8k` |
+| `HF_HUB_REPO_PREFIX` | plain value, e.g. `your-hf-username` |
+
+The two secrets go in RunPod's secret store and are referenced with the
+`{{ RUNPOD_SECRET_name }}` syntax so the values never appear in the pod config
+itself. `setup_pod.sh` checks that all six are set and names any that are
+missing, without printing values.
+
+Then clone and bootstrap:
+
+```bash
+cd /workspace
+git clone https://github.com/nazish-qamar/llm-distillation.git
+cd llm-distillation
+bash scripts/setup_pod.sh
+```
+
+`setup_pod.sh` is idempotent — re-run it after a `git push` to pick up new
+code. It checks for a GPU and the six variables, points `HF_HOME` and
+`UV_CACHE_DIR` at `/workspace` (the ~60GB volume disk, rather than the ~30GB
+container disk), installs `uv` and `tmux` if missing, fast-forwards the repo,
+runs `uv sync --extra gpu --locked`, and finishes with
+`scripts/verify_pod.py`, exiting non-zero if the pod is not usable.
+
+Run long jobs under `tmux` so they survive an SSH disconnect.
 
 ## Data notes
 
