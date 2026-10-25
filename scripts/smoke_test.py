@@ -171,7 +171,12 @@ def main() -> int:
         mlflow.log_text("\n".join(json.dumps(row) for row in rows), "outputs.jsonl")
         run_id = str(run.info.run_id)
 
-    print(f"\nMLflow run id: {run_id}")
+    # Reprinted together at the very end: MLflow's own logging output comes
+    # between the accuracy line above and here, so without this the score is
+    # buried above the chatter.
+    print("\n--- summary ---")
+    print(f"accuracy:      {acc:.2f} ({n_correct}/{len(rows)})")
+    print(f"mlflow run id: {run_id}")
     return 0
 
 
