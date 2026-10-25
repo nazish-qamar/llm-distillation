@@ -19,9 +19,14 @@ Implemented and tested:
 | `src/kd/prompts.py` | The shared system prompt, inference messages, and SFT training targets |
 | `src/kd/scoring.py` | Answer extraction from model output, plus `is_correct` / `accuracy` |
 
-Not written yet: teacher generation, student fine-tuning, evaluation entry
-points, and MLflow logging. `configs/` and `scripts/` are empty placeholders,
-and the `kd` console script is still a stub that prints `Hello from kd!`.
+`scripts/` holds the pod tooling: `setup_pod.sh` (bootstrap), `verify_pod.py`
+(readiness checks) and `smoke_test.py` (end-to-end chain test). See
+[Starting a pod](#starting-a-pod).
+
+Not written yet: teacher generation, student fine-tuning, and evaluation entry
+points. MLflow logging exists only in the smoke test so far. `configs/` is an
+empty placeholder, and the `kd` console script is still a stub that prints
+`Hello from kd!`.
 
 ## Requirements
 
@@ -140,6 +145,37 @@ runs `uv sync --extra gpu --locked`, and finishes with
 `scripts/verify_pod.py`, exiting non-zero if the pod is not usable.
 
 Run long jobs under `tmux` so they survive an SSH disconnect.
+
+### Smoke test
+
+Once `verify_pod.py` reports `Pod is ready.`, run the end-to-end check:
+
+```bash
+uv run --extra gpu --locked python scripts/smoke_test.py
+```
+
+The `--extra gpu` is required here too — a plain `uv run` would uninstall torch
+and vllm before the script even starts.
+
+It puts five GSM8K test examples through `Qwen/Qwen2.5-0.5B-Instruct` with vLLM
+(greedy, `max_tokens=512`), scores them with `kd.scoring`, and logs one MLflow
+run named `smoke-test` to the experiment in `MLFLOW_EXPERIMENT_NAME`, with the
+full completions as an `outputs.jsonl` artifact. It ends with a summary block
+giving the accuracy and the MLflow run id.
+
+What it proves is that the chain is wired up — `kd.data` loading, `kd.prompts`
+through the model's own chat template, generation, `kd.scoring` extraction, and
+a run reaching Databricks. It says nothing useful about model quality: at 0.5B
+and untuned, a low accuracy is expected. **Success is exit code 0 and a run id
+you can open in MLflow, not a high score.**
+
+A `finish=length` on any example means the completion hit `max_tokens` and was
+cut off before its `#### N` line, so it scores wrong for a reason unrelated to
+the model's reasoning. The script warns when that happens.
+
+Verified on an A40 pod: `verify_pod.py` 13/13 PASS, and the smoke test ran end
+to end at 2/5 accuracy with every completion finishing on `stop`, with the run
+logged to Databricks.
 
 ## Data notes
 
